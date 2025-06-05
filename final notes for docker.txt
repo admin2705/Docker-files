@@ -1,0 +1,236 @@
+Final Notes for Docker-with using Docker Compose
+
+
+1  sudo apt-get install docker
+2  sudo apt-get install docker.io -y
+3  sudo systemctl status docker
+4  docker login
+5  username:
+6  password/token 
+7  sudo usermod -aG docker $USER 
+8  newgrp docker 
+9  docker --version 
+10 sudo apt-get install docker-compose-plugin
+11 sudo apt-get install docker-compose -y
+12 curl -SL https://github.com/docker/compose/releases/download/v2.32.0/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+13 sudo chmod +x /usr/local/bin/docker-compose
+14 docker-compose --version
+15 docker-compose up -d --build
+16 docker build -t pmasne/new_image:v1 .   --->>> will create image on your docker.
+17 docker push pmasne/new_image:v1         --->>> will push image on your docker hub
+18 docker-compose up -d --build            --->>> this command is use to up and build image/container.
+19 docker-compose down                     --->>> will down all running conatiners.
+20 docker ps
+21 docker ps -a
+22 docker logs conatiner_ID
+23 docker stop conainer_id                ---- to stop conatiner 
+
+
+
+
+some extra and command which is usefull while deploying project manuaaly without using docker-compose.
+
+1 docker pull image_name[like:mysql]    ----use to download images from docker hub
+2 docker run image_name                 ---- to create container from image.
+3 ex. docker run -e MYSQL_ROOT_PASSWORD=root image_name[mysql]   ----- because mysql is server and server need password or username
+4 docker run -d -e MYSQL_ROOT_PASSWORD=root image_name[mysql]    ---- to run image in detached mode
+ docker ps                 ---- to see a containers
+
+
+
+
+
+Important notes:-
+make changes:
+- application.properties:(in backend)
+- config file (in frontend)
+- check default.conf/nginx.conf
+- check paths and ports in every file.
+- also in backend check jar is available and build it.
+
+
+####################################################################
+create Docker file for forntend and default/nginx.conf file on below location.
+#/home/ubuntu/project/frontend/
+
+
+##Dockerfile
+FROM nginx:latest
+
+COPY . /usr/share/nginx/html
+
+COPY default.conf /etc/nginx/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
+
+
+////////////////////////////////////////////////////////////////////////
+
+default.conf create at same location.
+
+
+server {
+        listen 80;
+
+        server_name 43.205.119.100;
+
+        # Proxy setup
+        location /api {
+            proxy_pass http://43.205.119.100:8080/;  # Replace with your backend server's address
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+}
+
+
+
+
+##########################################################################################
+# /home/ubuntu/web/nginx/default.conf
+
+
+>>you can store "nginx.conf" here
+server {
+    listen 80;
+
+    location / {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+        try_files $uri $uri/ /index.html;  # Handle SPA routing
+    }
+
+    location /api {
+        proxy_pass http://backend:8080/api;   # Backend URL to forward API requests
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+
+
+Dockerfile(Backend.JAVA)   loc:>> /home/ubuntu/web/backend/Dockerfile.
+
+# Use an official Java runtime as a parent image
+FROM openjdk:17-jdk-slim
+
+# Set the
+WORKDIR /app
+# Copy the jar file into the container
+COPY target/QuantomSoft-0.0.1-SNAPSHOT.jar QuantomSoft-0.0.1-SNAPSHOT.jar
+
+# Make the port available to the outside world
+EXPOSE 8080
+
+# Run the jar file
+CMD ["java", "-jar", "QuantomSoft-0.0.1-SNAPSHOT.jar"]
+
+
+#######################################################################################
+
+
+docker-compose.yml     >>> /home/ubuntu/project/
+
+
+version: '3.4'
+ 
+services:
+ 
+  backend:
+    image: pmasne98/backendimage:v4
+   # Relative path to the backend project directory
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysqldb:3306/quantomsoft
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Neha@123
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysqldb
+    networks:
+      - mynetwork  # Use the custom network
+ 
+  frontend:
+    image: pmasne98/frontimage:v4 # Relative path to the frontend project directory
+    ports:
+      - "5502:80"   # Change from 80 to 8081 to avoid conflict with port 80
+    depends_on:
+      - backend
+    networks:
+      - mynetwork  # Use the custom network
+ 
+  mysqldb:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: "Neha@123"
+      MYSQL_DATABASE: "quantomsoft"  # Automatically creates the database
+      MYSQL_PASSWORD: "Neha@123"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql  # Persist MySQL data across container restarts
+    networks:
+      - mynetwork  # Use the custom network
+ 
+networks:
+  mynetwork:
+ 
+volumes:
+  mysql-data:
+
+/////////////////////////////////////////////////////////////////////////////
+
+if you not build image manually u can use below .yml file.
+
+version: '3.4'
+
+services:
+
+  backend:
+    build:
+      context: ./backend  # Path to your backend directory
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysqldb:3306/quantomsoft
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Neha@123
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysqldb
+    networks:
+      - mynetwork
+
+  frontend:
+    build:
+      context: ./frontend  # Path to your frontend directory
+    ports:
+      - "5502:80"
+    depends_on:
+      - backend
+    networks:
+      - mynetwork
+
+  mysqldb:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: "Neha@123"
+      MYSQL_DATABASE: "quantomsoft"
+      MYSQL_PASSWORD: "Neha@123"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - mynetwork
+
+networks:
+  mynetwork:
+
+volumes:
+  mysql-data:
+

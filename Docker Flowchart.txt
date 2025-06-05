@@ -1,0 +1,59 @@
+                          +----------------------+
+                          |  Developer/Operator  |
+                          +----------------------+
+                                    |
+                                    v
+                          +----------------------+
+                          |  Writes Dockerfile   |
+                          +----------------------+
+                                    |
+                                    v
+                          +----------------------+
+                          |  Builds Docker Image |
+                          |  (docker build -t)   |
+                          +----------------------+
+                                    |
+                                    v
+               +----------------------------------+
+               |   Stores Image in Local Cache    |
+               +----------------------------------+
+                    |                      |
+           (If Needed)               (If Sharing Required)
+                |                              |
+                v                              v
++---------------------------+       +-------------------------+
+| Pull Image from Registry  |       | Push Image to Registry  |
+| (docker pull)             |       | (docker push)           |
++---------------------------+       +-------------------------+
+                |                              |
+                v                              v
+          +----------------------------------------+
+          |  Runs a Container from the Image       |
+          |  (docker run -d -p 8080:80 <image>)    |
+          +----------------------------------------+
+                          |
+                          v
+                +-------------------------------+
+                |  Container Lifecycle          |
+                |  (start, stop, restart, logs) |
+                +-------------------------------+
+                          |
+                          v
+                +--------------------------+
+                | Networking & Storage     |
+                | (Volumes, Bridges, etc.) |
+                +--------------------------+
+                          |
+                          v
+                +-----------------------+
+                |   Monitoring & Logs   |
+                |  (docker stats/logs)  |
+                +-----------------------+
+
+Docker daemon:
+// A system administrator modifies "/etc/docker/daemon.json" to enable remote API access for managing Docker remotely.:
+
+{
+  "hosts": ["tcp://0.0.0.0:2375", "unix:///var/run/docker.sock"]
+}
+
